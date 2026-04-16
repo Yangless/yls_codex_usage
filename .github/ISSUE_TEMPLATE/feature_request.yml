@@ -1,0 +1,65 @@
+name: Feature request
+description: Suggest a focused improvement to the product, docs, or repository workflow.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please describe the user problem first, then the proposed change.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user need, friction, or gap does this request address?
+      placeholder: Describe the problem you are trying to solve.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe the change you want to see.
+      placeholder: Describe the preferred solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Describe alternative approaches or workarounds you considered.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Product behavior
+        - Repository workflow
+        - Documentation
+        - Build / CI
+        - Security / privacy
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: Expected impact
+      description: Who benefits, and how should success be judged?
+      placeholder: Describe the expected value and outcome.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checklist
+      options:
+        - label: I searched existing issues before opening this request.
+          required: true
+        - label: This request describes a single focused improvement, not multiple unrelated changes.
+          required: true

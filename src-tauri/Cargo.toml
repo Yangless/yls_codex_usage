@@ -3,8 +3,8 @@ name = "yls_codex_usage"
 version = "0.1.0"
 description = "Codex 用量查询 Tauri App"
 authors = ["Yangless"]
-license = ""
-repository = ""
+license = "MIT"
+repository = "https://github.com/Yangless/yls_codex_usage"
 edition = "2021"
 rust-version = "1.77.2"
 

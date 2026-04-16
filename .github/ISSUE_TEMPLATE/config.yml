@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 使用与贡献说明
+    url: https://github.com/Yangless/yls_codex_usage/blob/main/CONTRIBUTING.md
+    about: 在提交问题或变更前，请先阅读开发、测试和提交流程。
+  - name: 安全问题报告
+    url: https://github.com/Yangless/yls_codex_usage/blob/main/SECURITY.md
+    about: 涉及密钥、存储或安全边界的问题，请按安全报告流程私下提交。

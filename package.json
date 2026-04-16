@@ -1,6 +1,16 @@
 {
   "name": "yls_codex_usage",
+  "version": "0.1.0",
   "description": "Codex 用量查询跨平台 Tauri 应用",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Yangless/yls_codex_usage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Yangless/yls_codex_usage/issues"
+  },
+  "homepage": "https://github.com/Yangless/yls_codex_usage#readme",
   "type": "module",
   "packageManager": "pnpm@8.15.9",
   "scripts": {

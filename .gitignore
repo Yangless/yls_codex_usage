@@ -12,11 +12,13 @@ dist
 dist-ssr
 *.local
 .worktrees/
+.claude/
 .agents/
 .codex-logs/
 tauri-out.log
 tauri-err.log
 _tmp_*
+tmp-*.png
 .env
 .env.*
 !.env.example
