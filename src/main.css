@@ -5,7 +5,7 @@
 @layer base {
   :root {
     color-scheme: light;
-    font-family: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    font-family: "IBM Plex Sans", "Noto Sans CJK SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
     --background: 145 43% 97%;
     --foreground: 156 38% 14%;
     --card: 0 0% 100%;
@@ -90,6 +90,16 @@
     }
   }
 
+  :root[data-effects="reduced"] body {
+    background: linear-gradient(180deg, #f3fbf7 0%, #edf8f2 100%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root[data-effects="reduced"] body {
+      background: linear-gradient(180deg, #071b14 0%, #081f17 100%);
+    }
+  }
+
   ::selection {
     background: rgba(0, 193, 106, 0.24);
   }
@@ -103,6 +113,30 @@
 
   button {
     border: 0;
+  }
+
+  :root[data-effects="reduced"] .glass-panel,
+  :root[data-effects="reduced"] .glass-surface,
+  :root[data-effects="reduced"] .glass-chip,
+  :root[data-effects="reduced"] .glass-popover,
+  :root[data-effects="reduced"] .backdrop-blur-sm {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  :root[data-effects="reduced"] .glass-panel {
+    background-color: hsl(var(--card) / 0.96);
+  }
+
+  :root[data-effects="reduced"] .glass-surface,
+  :root[data-effects="reduced"] .glass-chip,
+  :root[data-effects="reduced"] .glass-popover {
+    background-color: hsl(var(--background) / 0.94);
+  }
+
+  :root[data-effects="reduced"] .blur-3xl {
+    filter: none;
+    opacity: 0.28;
   }
 }
 
