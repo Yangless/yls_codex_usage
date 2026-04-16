@@ -100,7 +100,7 @@ Verified in this workspace:
 Not verified in this workspace:
 
 - Linux runtime/package verification
-- iOS init/dev on macOS
+- macOS GitHub Actions release workflow
 
 ## Design Rules Going Forward
 

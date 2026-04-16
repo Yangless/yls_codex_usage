@@ -5,8 +5,11 @@
 - Repository technical name: `yls_codex_usage`
 - App display name: `Codex 用量查询`
 - Stack: `Vue 3 + Vite 6 + Vitest + Tauri 2`
-- Current verified target in this workspace: `Windows desktop`
-- Not yet verified in this workspace: `Linux`, `iOS`
+- Current verified targets in this workspace:
+  - `Windows desktop`
+  - `Linux desktop` on local `Ubuntu 24.04.3 LTS`, including manual business smoke
+- Not yet fully verified in this workspace:
+  - `macOS desktop` release build is automated through GitHub Actions and should only be claimed verified after the workflow succeeds
 
 ## Resume First
 
@@ -38,6 +41,15 @@ When resuming work in Codex, read these files first:
 - `pnpm build`
 - `cargo check --manifest-path src-tauri/Cargo.toml`
 - `pnpm tauri dev` on Windows with manual save/refresh smoke testing
+- `pnpm test` inside local `Ubuntu 24.04.3 LTS`
+- `pnpm build` inside local `Ubuntu 24.04.3 LTS`
+- `cargo check --manifest-path src-tauri/Cargo.toml` inside local `Ubuntu 24.04.3 LTS`
+- `pnpm tauri build` inside local `Ubuntu 24.04.3 LTS`
+- `pnpm tauri dev` inside local `Ubuntu 24.04.3 LTS`, with `vite`, `cargo run`, and `./yls_codex_usage` process launch observed
+- direct launch of `src-tauri/target/release/yls_codex_usage` inside local `Ubuntu 24.04.3 LTS`
+- Linux manual smoke inside local `Ubuntu 24.04.3 LTS`:
+  - invalid key save and backend error message observed directly
+  - valid key save / refresh / restart-readback marked passed by user confirmation
 
 ## Important Paths
 
@@ -61,7 +73,8 @@ pnpm tauri build
 
 ## Known Constraints
 
-- Do not claim Linux or iOS validation unless those targets were actually run
+- Do not claim Linux or macOS validation unless those targets were actually run
 - Do not claim the API key is in `localStorage`; that is no longer true in the Tauri path
 - Stronghold may create companion files such as `vault.hold.*` in the app data directory
 - Cold Stronghold operations on Windows can still take noticeable time even after the current mitigations
+- Linux runtime may emit `libEGL/MESA` warnings; record them as observed behavior unless a concrete rendering or launch failure is reproduced

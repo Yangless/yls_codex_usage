@@ -55,19 +55,33 @@ This repository contains the live Tauri 2 version of the Codex usage dashboard. 
   - save invalid key
   - restart and reload stored config
   - observe save/refresh behavior around Stronghold latency
+- Linux verification on local `Ubuntu 24.04.3 LTS`:
+  - `pnpm test`
+  - `pnpm build`
+  - `cargo check --manifest-path src-tauri/Cargo.toml`
+  - `pnpm tauri build`
+  - `pnpm tauri dev` launched `vite`, `cargo run`, and `./yls_codex_usage`
+  - direct launch of `src-tauri/target/release/yls_codex_usage`
+  - visual smoke after a focus switch with the Linux reduced-effects fallback
+  - manual invalid-key smoke with user-assisted input:
+    - saving an invalid key updated Linux `vault.hold`
+    - the UI surfaced the backend invalid-key `msg`
+  - Linux storage path confirmed at `~/.local/share/com.ylsagi.codexusage/`
+  - Linux `vault.hold` backup/restore was exercised during smoke work
+  - Linux manual business smoke is complete:
+    - invalid-key save path was directly observed in-session
+    - valid-key save / refresh / restart-readback were later confirmed passed by the user
 
 ## Not Yet Verified Here
 
-- Linux desktop smoke
-- Linux packaging
-- iOS init/dev on macOS
+- macOS release workflow on GitHub Actions
 
 ## Next Recommended Steps
 
-1. Keep Windows as the only claimed verified target until Linux/iOS are actually run
-2. If Stronghold latency remains user-visible on more machines, consider a clearer foreground/background save state split in the UI copy
-3. Add packaging/installer verification once the desktop flow is considered stable
-4. Only document iOS again after `src-tauri/gen/apple` exists and a real init/dev pass has been completed
+1. Track whether the observed `libEGL/MESA` warnings are causal or only correlated runtime noise
+2. If the reduced-effects fallback proves too narrow or too broad, refine the Linux visual policy in `src/platform/visual-environment.ts`
+3. Execute the remaining platform adaptation plan items before expanding platform claims in public docs
+4. If Stronghold latency remains user-visible on more machines, consider a clearer foreground/background save state split in the UI copy
 
 ## Resume Rule
 

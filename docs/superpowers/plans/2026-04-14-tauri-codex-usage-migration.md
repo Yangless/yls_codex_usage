@@ -28,7 +28,7 @@ The migration plan in this file has already been executed for the current Window
 ## Remaining Work
 
 1. Verify Linux desktop runtime before claiming Linux support
-2. Initialize and test iOS on `macOS + Xcode` before restoring iOS run instructions to user-facing docs
+2. Validate the macOS GitHub Actions release build before documenting macOS release automation as verified
 3. Decide whether the UI copy around local encryption should be softened to avoid overclaiming security guarantees
 4. Add packaging/install verification for Windows release builds
 
