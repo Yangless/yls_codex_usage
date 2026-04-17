@@ -230,17 +230,17 @@ jobs:
                 rpm="$(assert_exactly_one "Linux rpm in $artifact_name" "$artifact_dir"/*.rpm)"
                 stage_copy "$rpm" "yls_codex_usage_${version}_linux_x64.rpm"
                 ;;
-              release-macos-x64-dmg|release-macos-x86_64-dmg|release-macos-amd64-dmg)
+              release-macos-x64-dmg|release-macos-x86_64-dmg|release-macos-amd64-dmg|release-darwin-x64-dmg|release-darwin-x86_64-dmg|release-darwin-amd64-dmg)
                 ((macos_x64_dmg_count+=1))
                 dmg="$(assert_exactly_one "macOS x64 dmg in $artifact_name" "$artifact_dir"/*.dmg)"
                 stage_copy "$dmg" "yls_codex_usage_${version}_macos_x64.dmg"
                 ;;
-              release-macos-aarch64-dmg)
+              release-macos-aarch64-dmg|release-darwin-aarch64-dmg)
                 ((macos_aarch64_dmg_count+=1))
                 dmg="$(assert_exactly_one "macOS aarch64 dmg in $artifact_name" "$artifact_dir"/*.dmg)"
                 stage_copy "$dmg" "yls_codex_usage_${version}_macos_aarch64.dmg"
                 ;;
-              release-macos-x64-app|release-macos-x86_64-app|release-macos-amd64-app)
+              release-macos-x64-app|release-macos-x86_64-app|release-macos-amd64-app|release-darwin-x64-app|release-darwin-x86_64-app|release-darwin-amd64-app)
                 ((macos_x64_app_count+=1))
                 target_app_tar="$upload_dir/yls_codex_usage_${version}_macos_x64_app.tar.gz"
                 app_tars=("$artifact_dir"/*.app.tar.gz)
@@ -261,7 +261,7 @@ jobs:
                   tar -C "$app_bundle_parent" -czf "$target_app_tar" "$app_bundle_name"
                 fi
                 ;;
-              release-macos-aarch64-app)
+              release-macos-aarch64-app|release-darwin-aarch64-app)
                 ((macos_aarch64_app_count+=1))
                 target_app_tar="$upload_dir/yls_codex_usage_${version}_macos_aarch64_app.tar.gz"
                 app_tars=("$artifact_dir"/*.app.tar.gz)
