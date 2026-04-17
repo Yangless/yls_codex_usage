@@ -24,49 +24,8 @@ env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
-  cleanup-release-assets:
-    name: Prepare release assets
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - name: Remove existing assets for this tag
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const tag = process.env.RELEASE_TAG;
-            try {
-              const { data: release } = await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag,
-              });
-
-              if (!release.assets.length) {
-                core.info(`Release ${tag} exists but has no assets to delete.`);
-                return;
-              }
-
-              for (const asset of release.assets) {
-                core.info(`Deleting existing asset: ${asset.name}`);
-                await github.rest.repos.deleteReleaseAsset({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  asset_id: asset.id,
-                });
-              }
-            } catch (error) {
-              if (error.status === 404) {
-                core.info(`Release ${tag} does not exist yet. Nothing to clean up.`);
-                return;
-              }
-
-              throw error;
-            }
-
   release:
     name: Release ${{ matrix.name }}
-    needs: cleanup-release-assets
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -179,27 +138,61 @@ jobs:
             cp "$source_path" "$upload_dir/$target_name"
           }
 
-          for file in "$bundle_dir"/appimage/*.AppImage; do
-            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_appimage.AppImage"
-          done
+          assert_exactly_one() {
+            local label="$1"
+            shift
+            local matches=("$@")
+            if [[ ${#matches[@]} -ne 1 ]]; then
+              printf 'Expected exactly 1 %s in %s, found %s\n' "$label" "$bundle_dir" "${#matches[@]}" >&2
+              printf 'Matches: %s\n' "${matches[*]:-<none>}" >&2
+              exit 1
+            fi
+            printf '%s\n' "${matches[0]}"
+          }
 
-          for file in "$bundle_dir"/deb/*.deb; do
-            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.deb"
-          done
+          assert_absent() {
+            local label="$1"
+            shift
+            local matches=("$@")
+            if [[ ${#matches[@]} -ne 0 ]]; then
+              printf 'Expected no %s in %s, found %s\n' "$label" "$bundle_dir" "${#matches[@]}" >&2
+              printf 'Matches: %s\n' "${matches[*]}" >&2
+              exit 1
+            fi
+          }
 
-          for file in "$bundle_dir"/rpm/*.rpm; do
-            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.rpm"
-          done
+          appimages=("$bundle_dir"/appimage/*.AppImage)
+          debs=("$bundle_dir"/deb/*.deb)
+          rpms=("$bundle_dir"/rpm/*.rpm)
+          dmgs=("$bundle_dir"/dmg/*.dmg)
+          app_tars=("$bundle_dir"/macos/*.app.tar.gz)
 
-          for file in "$bundle_dir"/dmg/*.dmg; do
-            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.dmg"
-          done
+          if [[ "${{ matrix.asset_platform }}" == "linux" ]]; then
+            appimage="$(assert_exactly_one 'AppImage' "${appimages[@]}")"
+            deb="$(assert_exactly_one 'deb package' "${debs[@]}")"
+            rpm="$(assert_exactly_one 'rpm package' "${rpms[@]}")"
+            assert_absent 'dmg bundle' "${dmgs[@]}"
+            assert_absent 'macOS app tarball' "${app_tars[@]}"
 
-          for file in "$bundle_dir"/macos/*.app.tar.gz; do
-            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_app.tar.gz"
-          done
+            stage_asset "$appimage" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_appimage.AppImage"
+            stage_asset "$deb" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.deb"
+            stage_asset "$rpm" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.rpm"
+          else
+            assert_absent 'AppImage' "${appimages[@]}"
+            assert_absent 'deb package' "${debs[@]}"
+            assert_absent 'rpm package' "${rpms[@]}"
+            dmg="$(assert_exactly_one 'dmg bundle' "${dmgs[@]}")"
+            app_tar="$(assert_exactly_one 'macOS app tarball' "${app_tars[@]}")"
 
-          compgen -G "$upload_dir/*" > /dev/null
+            stage_asset "$dmg" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.dmg"
+            stage_asset "$app_tar" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_app.tar.gz"
+          fi
+
+          staged_files=("$upload_dir"/*)
+          if [[ ${#staged_files[@]} -eq 0 ]]; then
+            echo "No staged assets found in $upload_dir" >&2
+            exit 1
+          fi
 
       - name: Stage renamed assets on Windows
         if: runner.os == 'Windows'
@@ -215,12 +208,13 @@ jobs:
 
           New-Item -ItemType Directory -Path $uploadDir | Out-Null
 
-          $installer = Get-ChildItem -Path $bundleDir -Filter *.exe | Select-Object -First 1
-          if (-not $installer) {
-            throw 'NSIS installer not found.'
+          $installers = @(Get-ChildItem -Path $bundleDir -Filter *.exe)
+          if ($installers.Count -ne 1) {
+            $names = if ($installers.Count) { $installers.Name -join ', ' } else { '<none>' }
+            throw "Expected exactly one NSIS installer in $bundleDir, found $($installers.Count): $names"
           }
 
-          Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $uploadDir "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_setup.exe")
+          Copy-Item -LiteralPath $installers[0].FullName -Destination (Join-Path $uploadDir "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_setup.exe")
 
       - name: Upload renamed release assets
         uses: softprops/action-gh-release@v2
@@ -234,6 +228,7 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          overwrite_files: true
           fail_on_unmatched_files: true
           files: |
             src-tauri/target/release-upload/*
