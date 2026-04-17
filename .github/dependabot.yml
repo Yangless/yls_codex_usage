@@ -8,6 +8,10 @@ updates:
       time: "02:00"
       timezone: "Asia/Shanghai"
     open-pull-requests-limit: 10
+    ignore:
+      - dependency-name: "tailwindcss"
+        update-types:
+          - "version-update:semver-major"
     labels:
       - dependencies
 
@@ -31,6 +35,10 @@ updates:
       time: "02:30"
       timezone: "Asia/Shanghai"
     open-pull-requests-limit: 5
+    ignore:
+      - dependency-name: "pnpm/action-setup"
+        update-types:
+          - "version-update:semver-major"
     labels:
       - dependencies
       - github-actions
