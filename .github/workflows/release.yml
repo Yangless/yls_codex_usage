@@ -38,7 +38,7 @@ jobs:
             const tag = process.env.RELEASE_TAG;
 
             try {
-              await github.rest.repos.getRef({
+              await github.rest.git.getRef({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 ref: `tags/${tag}`,
