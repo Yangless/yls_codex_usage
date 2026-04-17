@@ -77,18 +77,26 @@ jobs:
             os: windows-latest
             rust_targets: ""
             tauri_args: "--bundles nsis"
+            asset_platform: "windows"
+            asset_arch: "x64"
           - name: Linux x64
             os: ubuntu-24.04
             rust_targets: ""
             tauri_args: ""
+            asset_platform: "linux"
+            asset_arch: "x64"
           - name: macOS Apple Silicon
             os: macos-latest
             rust_targets: "aarch64-apple-darwin"
             tauri_args: "--target aarch64-apple-darwin"
+            asset_platform: "macos"
+            asset_arch: "aarch64"
           - name: macOS Intel
             os: macos-15-intel
             rust_targets: "x86_64-apple-darwin"
             tauri_args: "--target x86_64-apple-darwin"
+            asset_platform: "macos"
+            asset_arch: "x64"
 
     steps:
       - name: Checkout repository
@@ -142,18 +150,92 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build and publish release assets
-        uses: tauri-apps/tauri-action@v0.6.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Tauri bundles
+        run: pnpm tauri build -- ${{ matrix.tauri_args }}
+
+      - name: Stage renamed assets on Unix runners
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="${RELEASE_TAG#v}"
+          rust_target="${{ matrix.rust_targets }}"
+          if [[ -n "$rust_target" ]]; then
+            bundle_dir="src-tauri/target/$rust_target/release/bundle"
+          else
+            bundle_dir="src-tauri/target/release/bundle"
+          fi
+
+          upload_dir="src-tauri/target/release-upload"
+          rm -rf "$upload_dir"
+          mkdir -p "$upload_dir"
+
+          shopt -s nullglob
+
+          stage_asset() {
+            local source_path="$1"
+            local target_name="$2"
+            cp "$source_path" "$upload_dir/$target_name"
+          }
+
+          for file in "$bundle_dir"/appimage/*.AppImage; do
+            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_appimage.AppImage"
+          done
+
+          for file in "$bundle_dir"/deb/*.deb; do
+            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.deb"
+          done
+
+          for file in "$bundle_dir"/rpm/*.rpm; do
+            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.rpm"
+          done
+
+          for file in "$bundle_dir"/dmg/*.dmg; do
+            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.dmg"
+          done
+
+          for file in "$bundle_dir"/macos/*.app.tar.gz; do
+            stage_asset "$file" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_app.tar.gz"
+          done
+
+          compgen -G "$upload_dir/*" > /dev/null
+
+      - name: Stage renamed assets on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_TAG -replace '^v', ''
+          $bundleDir = 'src-tauri/target/release/bundle/nsis'
+          $uploadDir = 'src-tauri/target/release-upload'
+
+          if (Test-Path $uploadDir) {
+            Remove-Item -LiteralPath $uploadDir -Recurse -Force
+          }
+
+          New-Item -ItemType Directory -Path $uploadDir | Out-Null
+
+          $installer = Get-ChildItem -Path $bundleDir -Filter *.exe | Select-Object -First 1
+          if (-not $installer) {
+            throw 'NSIS installer not found.'
+          }
+
+          Copy-Item -LiteralPath $installer.FullName -Destination (Join-Path $uploadDir "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_setup.exe")
+
+      - name: Upload renamed release assets
+        uses: softprops/action-gh-release@v2
         with:
-          tagName: ${{ env.RELEASE_TAG }}
-          releaseName: Codex 用量查询 ${{ env.RELEASE_TAG }}
-          releaseBody: |
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Codex 用量查询 ${{ env.RELEASE_TAG }}
+          body: |
             Automated desktop release for ${{ env.RELEASE_TAG }}.
 
             Assets include Windows, Linux, and macOS bundles built by GitHub Actions.
-          releaseDraft: false
+          draft: false
           prerelease: false
-          generateReleaseNotes: true
-          args: ${{ matrix.tauri_args }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            src-tauri/target/release-upload/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
