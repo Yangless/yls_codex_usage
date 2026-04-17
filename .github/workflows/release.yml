@@ -31,10 +31,27 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Verify release tag exists on origin
-        run: |
-          set -euo pipefail
-          git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}"
+      - name: Verify release tag exists
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+
+            try {
+              await github.rest.repos.getRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: `tags/${tag}`,
+              });
+              core.info(`Verified tag ${tag}.`);
+            } catch (error) {
+              if (error.status === 404) {
+                core.setFailed(`Tag ${tag} does not exist in ${context.repo.owner}/${context.repo.repo}.`);
+                return;
+              }
+
+              throw error;
+            }
 
   release:
     name: Release ${{ matrix.name }}
@@ -58,7 +75,7 @@ jobs:
             asset_platform: "linux"
             asset_arch: "x64"
           - name: macOS Apple Silicon
-            os: macos-latest
+            os: macos-15
             rust_targets: "aarch64-apple-darwin"
             tauri_args: "--target aarch64-apple-darwin"
             asset_platform: "macos"
