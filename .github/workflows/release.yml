@@ -144,165 +144,8 @@ jobs:
         uses: tauri-apps/tauri-action@v0.6.2
         with:
           args: ${{ matrix.tauri_args }}
-
-      - name: Stage renamed assets on Unix runners
-        if: runner.os != 'Windows'
-        shell: bash
-        env:
-          TAURI_ARTIFACT_PATHS: ${{ steps.tauri_build.outputs.artifactPaths }}
-        run: |
-          set -euo pipefail
-
-          version="${RELEASE_TAG#v}"
-          upload_dir="src-tauri/target/release-upload"
-          rm -rf "$upload_dir"
-          mkdir -p "$upload_dir"
-
-          artifact_paths=()
-          while IFS= read -r path; do
-            [[ -n "$path" ]] && artifact_paths+=("$path")
-          done < <(node -e 'const raw = (process.env.TAURI_ARTIFACT_PATHS || "").trim(); if (!raw) { console.error("TAURI_ARTIFACT_PATHS is empty"); process.exit(1); } let paths; try { const parsed = JSON.parse(raw); paths = Array.isArray(parsed) ? parsed.map(String) : (typeof parsed === "string" ? [parsed] : []); } catch { paths = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean); } for (const path of paths) { console.log(path); }')
-
-          stage_asset() {
-            local source_path="$1"
-            local target_name="$2"
-            cp "$source_path" "$upload_dir/$target_name"
-          }
-
-          assert_exactly_one() {
-            local label="$1"
-            shift
-            local matches=("$@")
-            if [[ ${#matches[@]} -ne 1 ]]; then
-              printf 'Expected exactly 1 %s from tauri artifactPaths, found %s\n' "$label" "${#matches[@]}" >&2
-              printf 'Matches: %s\n' "${matches[*]:-<none>}" >&2
-              exit 1
-            fi
-            printf '%s\n' "${matches[0]}"
-          }
-
-          assert_absent() {
-            local label="$1"
-            shift
-            local matches=("$@")
-            if [[ ${#matches[@]} -ne 0 ]]; then
-              printf 'Expected no %s from tauri artifactPaths, found %s\n' "$label" "${#matches[@]}" >&2
-              printf 'Matches: %s\n' "${matches[*]}" >&2
-              exit 1
-            fi
-          }
-
-          appimages=()
-          debs=()
-          rpms=()
-          dmgs=()
-          app_tars=()
-          app_bundles=()
-
-          for path in "${artifact_paths[@]}"; do
-            case "$path" in
-              *.AppImage) appimages+=("$path") ;;
-              *.deb) debs+=("$path") ;;
-              *.rpm) rpms+=("$path") ;;
-              *.app.tar.gz) app_tars+=("$path") ;;
-              *.app) app_bundles+=("$path") ;;
-              *.dmg) dmgs+=("$path") ;;
-            esac
-          done
-
-          if [[ "${{ matrix.asset_platform }}" == "linux" ]]; then
-            appimage="$(assert_exactly_one 'AppImage' "${appimages[@]}")"
-            deb="$(assert_exactly_one 'deb package' "${debs[@]}")"
-            rpm="$(assert_exactly_one 'rpm package' "${rpms[@]}")"
-            assert_absent 'dmg bundle' "${dmgs[@]}"
-            assert_absent 'macOS app tarball' "${app_tars[@]}"
-
-            stage_asset "$appimage" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_appimage.AppImage"
-            stage_asset "$deb" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.deb"
-            stage_asset "$rpm" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.rpm"
-          else
-            assert_absent 'AppImage' "${appimages[@]}"
-            assert_absent 'deb package' "${debs[@]}"
-            assert_absent 'rpm package' "${rpms[@]}"
-            dmg="$(assert_exactly_one 'dmg bundle' "${dmgs[@]}")"
-            total_app_candidates=$(( ${#app_tars[@]} + ${#app_bundles[@]} ))
-            if [[ $total_app_candidates -ne 1 ]]; then
-              printf 'Expected exactly 1 macOS app candidate from tauri artifactPaths, found %s\n' "$total_app_candidates" >&2
-              printf 'App tar matches: %s\n' "${app_tars[*]:-<none>}" >&2
-              printf 'App bundle matches: %s\n' "${app_bundles[*]:-<none>}" >&2
-              exit 1
-            fi
-
-            target_app_tar="$upload_dir/yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_app.tar.gz"
-            if [[ ${#app_tars[@]} -eq 1 ]]; then
-              stage_asset "${app_tars[0]}" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_app.tar.gz"
-            else
-              app_bundle="${app_bundles[0]}"
-              app_bundle_parent="$(dirname "$app_bundle")"
-              app_bundle_name="$(basename "$app_bundle")"
-              tar -C "$app_bundle_parent" -czf "$target_app_tar" "$app_bundle_name"
-            fi
-
-            stage_asset "$dmg" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.dmg"
-          fi
-
-          staged_files=("$upload_dir"/*)
-          if [[ ${#staged_files[@]} -eq 0 ]]; then
-            echo "No staged assets found in $upload_dir" >&2
-            exit 1
-          fi
-
-      - name: Stage renamed assets on Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          TAURI_ARTIFACT_PATHS: ${{ steps.tauri_build.outputs.artifactPaths }}
-        run: |
-          $version = $env:RELEASE_TAG -replace '^v', ''
-          $uploadDir = 'src-tauri/target/release-upload'
-
-          if (Test-Path $uploadDir) {
-            Remove-Item -LiteralPath $uploadDir -Recurse -Force
-          }
-
-          New-Item -ItemType Directory -Path $uploadDir | Out-Null
-
-          $rawArtifactPaths = $env:TAURI_ARTIFACT_PATHS
-          if ([string]::IsNullOrWhiteSpace($rawArtifactPaths)) {
-            throw 'TAURI_ARTIFACT_PATHS is empty.'
-          }
-
-          try {
-            $parsedArtifactPaths = $rawArtifactPaths | ConvertFrom-Json
-            if ($parsedArtifactPaths -is [string]) {
-              $artifactPaths = @($parsedArtifactPaths)
-            }
-            else {
-              $artifactPaths = @($parsedArtifactPaths)
-            }
-          }
-          catch {
-            $artifactPaths = @(
-              $rawArtifactPaths -split "`r?`n" |
-              Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
-            )
-          }
-
-          $installers = @($artifactPaths | Where-Object { $_ -like '*.exe' })
-          if ($installers.Count -ne 1) {
-            $names = if ($installers.Count) { $installers -join ', ' } else { '<none>' }
-            throw "Expected exactly one NSIS installer from tauri artifactPaths, found $($installers.Count): $names"
-          }
-
-          Copy-Item -LiteralPath $installers[0] -Destination (Join-Path $uploadDir "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_setup.exe")
-
-      - name: Upload renamed assets as workflow artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: release-assets-${{ matrix.asset_platform }}-${{ matrix.asset_arch }}
-          if-no-files-found: error
-          path: |
-            src-tauri/target/release-upload/*
+          uploadWorkflowArtifacts: true
+          workflowArtifactNamePattern: release-[platform]-[arch]-[bundle]
 
   finalize-release:
     name: Finalize release
@@ -315,8 +158,151 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: release-artifacts
-          pattern: release-assets-*
-          merge-multiple: true
+          pattern: release-*
+
+      - name: Stage renamed release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+
+          version="${RELEASE_TAG#v}"
+          artifacts_dir="release-artifacts"
+          upload_dir="release-staged"
+          rm -rf "$upload_dir"
+          mkdir -p "$upload_dir"
+
+          windows_setup_count=0
+          linux_appimage_count=0
+          linux_deb_count=0
+          linux_rpm_count=0
+          macos_x64_dmg_count=0
+          macos_aarch64_dmg_count=0
+          macos_x64_app_count=0
+          macos_aarch64_app_count=0
+
+          stage_copy() {
+            local source_path="$1"
+            local target_name="$2"
+            local destination="$upload_dir/$target_name"
+            if [[ -e "$destination" ]]; then
+              printf 'Refusing to overwrite staged asset %s\n' "$destination" >&2
+              exit 1
+            fi
+            cp -R "$source_path" "$destination"
+          }
+
+          assert_exactly_one() {
+            local label="$1"
+            shift
+            local matches=("$@")
+            if [[ ${#matches[@]} -ne 1 ]]; then
+              printf 'Expected exactly 1 %s, found %s\n' "$label" "${#matches[@]}" >&2
+              printf 'Matches: %s\n' "${matches[*]:-<none>}" >&2
+              exit 1
+            fi
+            printf '%s\n' "${matches[0]}"
+          }
+
+          for artifact_dir in "$artifacts_dir"/*; do
+            [[ -d "$artifact_dir" ]] || continue
+
+            artifact_name="$(basename "$artifact_dir")"
+
+            case "$artifact_name" in
+              release-windows-x64-nsis|release-windows-x86_64-nsis|release-windows-amd64-nsis)
+                ((windows_setup_count+=1))
+                installer="$(assert_exactly_one "Windows NSIS installer in $artifact_name" "$artifact_dir"/*.exe)"
+                stage_copy "$installer" "yls_codex_usage_${version}_windows_x64_setup.exe"
+                ;;
+              release-linux-x64-appimage|release-linux-x86_64-appimage|release-linux-amd64-appimage)
+                ((linux_appimage_count+=1))
+                appimage="$(assert_exactly_one "Linux AppImage in $artifact_name" "$artifact_dir"/*.AppImage)"
+                stage_copy "$appimage" "yls_codex_usage_${version}_linux_x64_appimage.AppImage"
+                ;;
+              release-linux-x64-deb|release-linux-x86_64-deb|release-linux-amd64-deb)
+                ((linux_deb_count+=1))
+                deb="$(assert_exactly_one "Linux deb in $artifact_name" "$artifact_dir"/*.deb)"
+                stage_copy "$deb" "yls_codex_usage_${version}_linux_x64.deb"
+                ;;
+              release-linux-x64-rpm|release-linux-x86_64-rpm|release-linux-amd64-rpm)
+                ((linux_rpm_count+=1))
+                rpm="$(assert_exactly_one "Linux rpm in $artifact_name" "$artifact_dir"/*.rpm)"
+                stage_copy "$rpm" "yls_codex_usage_${version}_linux_x64.rpm"
+                ;;
+              release-macos-x64-dmg|release-macos-x86_64-dmg|release-macos-amd64-dmg)
+                ((macos_x64_dmg_count+=1))
+                dmg="$(assert_exactly_one "macOS x64 dmg in $artifact_name" "$artifact_dir"/*.dmg)"
+                stage_copy "$dmg" "yls_codex_usage_${version}_macos_x64.dmg"
+                ;;
+              release-macos-aarch64-dmg)
+                ((macos_aarch64_dmg_count+=1))
+                dmg="$(assert_exactly_one "macOS aarch64 dmg in $artifact_name" "$artifact_dir"/*.dmg)"
+                stage_copy "$dmg" "yls_codex_usage_${version}_macos_aarch64.dmg"
+                ;;
+              release-macos-x64-app|release-macos-x86_64-app|release-macos-amd64-app)
+                ((macos_x64_app_count+=1))
+                target_app_tar="$upload_dir/yls_codex_usage_${version}_macos_x64_app.tar.gz"
+                app_tars=("$artifact_dir"/*.app.tar.gz)
+                app_bundles=("$artifact_dir"/*.app)
+                total_app_candidates=$(( ${#app_tars[@]} + ${#app_bundles[@]} ))
+                if [[ $total_app_candidates -ne 1 ]]; then
+                  printf 'Expected exactly 1 macOS x64 app candidate in %s, found %s\n' "$artifact_name" "$total_app_candidates" >&2
+                  printf 'App tar matches: %s\n' "${app_tars[*]:-<none>}" >&2
+                  printf 'App bundle matches: %s\n' "${app_bundles[*]:-<none>}" >&2
+                  exit 1
+                fi
+                if [[ ${#app_tars[@]} -eq 1 ]]; then
+                  stage_copy "${app_tars[0]}" "$(basename "$target_app_tar")"
+                else
+                  app_bundle="${app_bundles[0]}"
+                  app_bundle_parent="$(dirname "$app_bundle")"
+                  app_bundle_name="$(basename "$app_bundle")"
+                  tar -C "$app_bundle_parent" -czf "$target_app_tar" "$app_bundle_name"
+                fi
+                ;;
+              release-macos-aarch64-app)
+                ((macos_aarch64_app_count+=1))
+                target_app_tar="$upload_dir/yls_codex_usage_${version}_macos_aarch64_app.tar.gz"
+                app_tars=("$artifact_dir"/*.app.tar.gz)
+                app_bundles=("$artifact_dir"/*.app)
+                total_app_candidates=$(( ${#app_tars[@]} + ${#app_bundles[@]} ))
+                if [[ $total_app_candidates -ne 1 ]]; then
+                  printf 'Expected exactly 1 macOS aarch64 app candidate in %s, found %s\n' "$artifact_name" "$total_app_candidates" >&2
+                  printf 'App tar matches: %s\n' "${app_tars[*]:-<none>}" >&2
+                  printf 'App bundle matches: %s\n' "${app_bundles[*]:-<none>}" >&2
+                  exit 1
+                fi
+                if [[ ${#app_tars[@]} -eq 1 ]]; then
+                  stage_copy "${app_tars[0]}" "$(basename "$target_app_tar")"
+                else
+                  app_bundle="${app_bundles[0]}"
+                  app_bundle_parent="$(dirname "$app_bundle")"
+                  app_bundle_name="$(basename "$app_bundle")"
+                  tar -C "$app_bundle_parent" -czf "$target_app_tar" "$app_bundle_name"
+                fi
+                ;;
+              *)
+                printf 'Ignoring workflow artifact directory: %s\n' "$artifact_name"
+                ;;
+            esac
+          done
+
+          [[ $windows_setup_count -eq 1 ]] || { printf 'Expected exactly 1 Windows NSIS artifact directory, found %s\n' "$windows_setup_count" >&2; exit 1; }
+          [[ $linux_appimage_count -eq 1 ]] || { printf 'Expected exactly 1 Linux AppImage artifact directory, found %s\n' "$linux_appimage_count" >&2; exit 1; }
+          [[ $linux_deb_count -eq 1 ]] || { printf 'Expected exactly 1 Linux deb artifact directory, found %s\n' "$linux_deb_count" >&2; exit 1; }
+          [[ $linux_rpm_count -eq 1 ]] || { printf 'Expected exactly 1 Linux rpm artifact directory, found %s\n' "$linux_rpm_count" >&2; exit 1; }
+          [[ $macos_x64_dmg_count -eq 1 ]] || { printf 'Expected exactly 1 macOS x64 dmg artifact directory, found %s\n' "$macos_x64_dmg_count" >&2; exit 1; }
+          [[ $macos_aarch64_dmg_count -eq 1 ]] || { printf 'Expected exactly 1 macOS aarch64 dmg artifact directory, found %s\n' "$macos_aarch64_dmg_count" >&2; exit 1; }
+          [[ $macos_x64_app_count -eq 1 ]] || { printf 'Expected exactly 1 macOS x64 app artifact directory, found %s\n' "$macos_x64_app_count" >&2; exit 1; }
+          [[ $macos_aarch64_app_count -eq 1 ]] || { printf 'Expected exactly 1 macOS aarch64 app artifact directory, found %s\n' "$macos_aarch64_app_count" >&2; exit 1; }
+
+          staged_files=("$upload_dir"/*)
+          if [[ ${#staged_files[@]} -ne 8 ]]; then
+            printf 'Expected exactly 8 staged release assets, found %s\n' "${#staged_files[@]}" >&2
+            printf 'Staged files: %s\n' "${staged_files[*]:-<none>}" >&2
+            exit 1
+          fi
 
       - name: Publish release metadata
         uses: softprops/action-gh-release@v2
@@ -333,7 +319,7 @@ jobs:
           overwrite_files: true
           fail_on_unmatched_files: true
           files: |
-            release-artifacts/*
+            release-staged/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
