@@ -158,7 +158,10 @@ jobs:
           rm -rf "$upload_dir"
           mkdir -p "$upload_dir"
 
-          mapfile -t artifact_paths < <(node -e 'const raw = (process.env.TAURI_ARTIFACT_PATHS || "").trim(); if (!raw) { console.error("TAURI_ARTIFACT_PATHS is empty"); process.exit(1); } let paths; try { const parsed = JSON.parse(raw); paths = Array.isArray(parsed) ? parsed.map(String) : (typeof parsed === "string" ? [parsed] : []); } catch { paths = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean); } for (const path of paths) { console.log(path); }')
+          artifact_paths=()
+          while IFS= read -r path; do
+            [[ -n "$path" ]] && artifact_paths+=("$path")
+          done < <(node -e 'const raw = (process.env.TAURI_ARTIFACT_PATHS || "").trim(); if (!raw) { console.error("TAURI_ARTIFACT_PATHS is empty"); process.exit(1); } let paths; try { const parsed = JSON.parse(raw); paths = Array.isArray(parsed) ? parsed.map(String) : (typeof parsed === "string" ? [parsed] : []); } catch { paths = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean); } for (const path of paths) { console.log(path); }')
 
           stage_asset() {
             local source_path="$1"
