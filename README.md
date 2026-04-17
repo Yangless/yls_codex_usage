@@ -5,6 +5,10 @@
 
 > 基于 `Tauri 2 + Vue 3 + Vite` 的桌面应用，用于查看 Codex 用量、订阅与余额，并在桌面端通过 `Tauri Stronghold` 安全保存 API key。
 
+## 界面预览
+
+![Codex 用量查询界面预览](./usage.png)
+
 ## 项目亮点
 
 - 安全保存 API key，应用重启后可重新加载
