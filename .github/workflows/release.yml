@@ -158,30 +158,7 @@ jobs:
           rm -rf "$upload_dir"
           mkdir -p "$upload_dir"
 
-          mapfile -t artifact_paths < <(
-            python - <<'PY'
-import json
-import os
-import sys
-
-raw = os.environ.get("TAURI_ARTIFACT_PATHS", "").strip()
-if not raw:
-    sys.exit("TAURI_ARTIFACT_PATHS is empty")
-
-paths = None
-try:
-    parsed = json.loads(raw)
-    if isinstance(parsed, list):
-        paths = [str(item) for item in parsed]
-    elif isinstance(parsed, str):
-        paths = [parsed]
-except json.JSONDecodeError:
-    paths = [line.strip() for line in raw.splitlines() if line.strip()]
-
-for path in paths:
-    print(path)
-PY
-          )
+          mapfile -t artifact_paths < <(python -c 'import json, os, sys; raw = os.environ.get("TAURI_ARTIFACT_PATHS", "").strip(); sys.exit("TAURI_ARTIFACT_PATHS is empty") if not raw else None; paths = None; exec("try:\n parsed = json.loads(raw)\n paths = [str(item) for item in parsed] if isinstance(parsed, list) else ([parsed] if isinstance(parsed, str) else None)\nexcept json.JSONDecodeError:\n paths = [line.strip() for line in raw.splitlines() if line.strip()]"); [print(path) for path in (paths or [])]')
 
           stage_asset() {
             local source_path="$1"
