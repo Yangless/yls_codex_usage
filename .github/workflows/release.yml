@@ -140,6 +140,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Tauri bundles
+        id: tauri_build
         uses: tauri-apps/tauri-action@v0.6.2
         with:
           args: ${{ matrix.tauri_args }}
@@ -147,22 +148,40 @@ jobs:
       - name: Stage renamed assets on Unix runners
         if: runner.os != 'Windows'
         shell: bash
+        env:
+          TAURI_ARTIFACT_PATHS: ${{ steps.tauri_build.outputs.artifactPaths }}
         run: |
           set -euo pipefail
 
           version="${RELEASE_TAG#v}"
-          rust_target="${{ matrix.rust_targets }}"
-          if [[ -n "$rust_target" ]]; then
-            bundle_dir="src-tauri/target/$rust_target/release/bundle"
-          else
-            bundle_dir="src-tauri/target/release/bundle"
-          fi
-
           upload_dir="src-tauri/target/release-upload"
           rm -rf "$upload_dir"
           mkdir -p "$upload_dir"
 
-          shopt -s nullglob
+          mapfile -t artifact_paths < <(
+            python - <<'PY'
+import json
+import os
+import sys
+
+raw = os.environ.get("TAURI_ARTIFACT_PATHS", "").strip()
+if not raw:
+    sys.exit("TAURI_ARTIFACT_PATHS is empty")
+
+paths = None
+try:
+    parsed = json.loads(raw)
+    if isinstance(parsed, list):
+        paths = [str(item) for item in parsed]
+    elif isinstance(parsed, str):
+        paths = [parsed]
+except json.JSONDecodeError:
+    paths = [line.strip() for line in raw.splitlines() if line.strip()]
+
+for path in paths:
+    print(path)
+PY
+          )
 
           stage_asset() {
             local source_path="$1"
@@ -175,7 +194,7 @@ jobs:
             shift
             local matches=("$@")
             if [[ ${#matches[@]} -ne 1 ]]; then
-              printf 'Expected exactly 1 %s in %s, found %s\n' "$label" "$bundle_dir" "${#matches[@]}" >&2
+              printf 'Expected exactly 1 %s from tauri artifactPaths, found %s\n' "$label" "${#matches[@]}" >&2
               printf 'Matches: %s\n' "${matches[*]:-<none>}" >&2
               exit 1
             fi
@@ -187,17 +206,27 @@ jobs:
             shift
             local matches=("$@")
             if [[ ${#matches[@]} -ne 0 ]]; then
-              printf 'Expected no %s in %s, found %s\n' "$label" "$bundle_dir" "${#matches[@]}" >&2
+              printf 'Expected no %s from tauri artifactPaths, found %s\n' "$label" "${#matches[@]}" >&2
               printf 'Matches: %s\n' "${matches[*]}" >&2
               exit 1
             fi
           }
 
-          appimages=("$bundle_dir"/appimage/*.AppImage)
-          debs=("$bundle_dir"/deb/*.deb)
-          rpms=("$bundle_dir"/rpm/*.rpm)
-          dmgs=("$bundle_dir"/dmg/*.dmg)
-          app_tars=("$bundle_dir"/macos/*.app.tar.gz)
+          appimages=()
+          debs=()
+          rpms=()
+          dmgs=()
+          app_tars=()
+
+          for path in "${artifact_paths[@]}"; do
+            case "$path" in
+              *.AppImage) appimages+=("$path") ;;
+              *.deb) debs+=("$path") ;;
+              *.rpm) rpms+=("$path") ;;
+              *.app.tar.gz) app_tars+=("$path") ;;
+              *.dmg) dmgs+=("$path") ;;
+            esac
+          done
 
           if [[ "${{ matrix.asset_platform }}" == "linux" ]]; then
             appimage="$(assert_exactly_one 'AppImage' "${appimages[@]}")"
@@ -229,9 +258,10 @@ jobs:
       - name: Stage renamed assets on Windows
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          TAURI_ARTIFACT_PATHS: ${{ steps.tauri_build.outputs.artifactPaths }}
         run: |
           $version = $env:RELEASE_TAG -replace '^v', ''
-          $bundleDir = 'src-tauri/target/release/bundle/nsis'
           $uploadDir = 'src-tauri/target/release-upload'
 
           if (Test-Path $uploadDir) {
@@ -240,13 +270,34 @@ jobs:
 
           New-Item -ItemType Directory -Path $uploadDir | Out-Null
 
-          $installers = @(Get-ChildItem -Path $bundleDir -Filter *.exe)
-          if ($installers.Count -ne 1) {
-            $names = if ($installers.Count) { $installers.Name -join ', ' } else { '<none>' }
-            throw "Expected exactly one NSIS installer in $bundleDir, found $($installers.Count): $names"
+          $rawArtifactPaths = $env:TAURI_ARTIFACT_PATHS
+          if ([string]::IsNullOrWhiteSpace($rawArtifactPaths)) {
+            throw 'TAURI_ARTIFACT_PATHS is empty.'
           }
 
-          Copy-Item -LiteralPath $installers[0].FullName -Destination (Join-Path $uploadDir "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_setup.exe")
+          try {
+            $parsedArtifactPaths = $rawArtifactPaths | ConvertFrom-Json
+            if ($parsedArtifactPaths -is [string]) {
+              $artifactPaths = @($parsedArtifactPaths)
+            }
+            else {
+              $artifactPaths = @($parsedArtifactPaths)
+            }
+          }
+          catch {
+            $artifactPaths = @(
+              $rawArtifactPaths -split "`r?`n" |
+              Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+            )
+          }
+
+          $installers = @($artifactPaths | Where-Object { $_ -like '*.exe' })
+          if ($installers.Count -ne 1) {
+            $names = if ($installers.Count) { $installers -join ', ' } else { '<none>' }
+            throw "Expected exactly one NSIS installer from tauri artifactPaths, found $($installers.Count): $names"
+          }
+
+          Copy-Item -LiteralPath $installers[0] -Destination (Join-Path $uploadDir "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_setup.exe")
 
       - name: Upload renamed assets as workflow artifact
         uses: actions/upload-artifact@v4
