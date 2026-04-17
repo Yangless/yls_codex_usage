@@ -54,7 +54,7 @@ Apply these settings to `main`:
 - Require a pull request before merging
 - Require status checks to pass before merging
 - Select the `Validate on Windows` workflow as a required check
-- Select the macOS Tauri release workflow as a required check if you want release builds gated before merge
+- Select the `Release` workflow as a required check if you want release builds gated before merge
 - Require branches to be up to date before merging
 - Require conversation resolution before merging
 - Restrict direct pushes if more than one maintainer is active
@@ -66,7 +66,7 @@ Recommended lightweight process:
 1. Update `CHANGELOG.md`
 2. Bump version metadata when appropriate
 3. Create a git tag such as `v0.1.0`
-4. Let the Tauri GitHub Action build macOS artifacts and attach them to GitHub Releases
+4. Let the release workflow build Windows, Linux, and macOS artifacts and attach them to GitHub Releases
 5. Publish a GitHub Release with:
    - summary of changes
    - platform notes

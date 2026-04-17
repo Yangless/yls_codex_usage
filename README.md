@@ -34,7 +34,7 @@
 | --- | --- | --- | --- |
 | Windows Desktop | 已验证 | `pnpm test`、`pnpm build`、`cargo check`、桌面端手工保存/刷新/重启读取 | 当前主要支持平台 |
 | Linux Desktop | 已验证 | `pnpm test`、`pnpm build`、`cargo check`、`pnpm tauri dev` 启动、`pnpm tauri build`、手工保存/刷新/重启读取烟测 | 本地 `Ubuntu 24.04.3 LTS` + `WSLg` 已完成 |
-| macOS Desktop | 已配置 CI | `tauri-apps/tauri-action` 自动构建、Tauri 产物上传 GitHub Releases | 待首次工作流运行验证 |
+| macOS Desktop | 已配置 Release CI | 基于 `v*` tag 的 GitHub Actions 多平台发布流程会自动构建并上传桌面产物到 GitHub Releases | 待首次工作流运行验证 |
 
 ## 快速开始
 
@@ -155,7 +155,7 @@ Windows 下默认本地文件位置：
 
 ## Roadmap
 
-- macOS：通过 GitHub Actions 自动构建 Tauri 桌面产物并上传到 GitHub Releases
+- GitHub Releases：推送 `v*` tag 后自动构建并上传 Windows、Linux、macOS 桌面产物
 
 ## License
 
