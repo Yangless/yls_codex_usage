@@ -197,6 +197,7 @@ jobs:
           rpms=()
           dmgs=()
           app_tars=()
+          app_bundles=()
 
           for path in "${artifact_paths[@]}"; do
             case "$path" in
@@ -204,6 +205,7 @@ jobs:
               *.deb) debs+=("$path") ;;
               *.rpm) rpms+=("$path") ;;
               *.app.tar.gz) app_tars+=("$path") ;;
+              *.app) app_bundles+=("$path") ;;
               *.dmg) dmgs+=("$path") ;;
             esac
           done
@@ -223,10 +225,25 @@ jobs:
             assert_absent 'deb package' "${debs[@]}"
             assert_absent 'rpm package' "${rpms[@]}"
             dmg="$(assert_exactly_one 'dmg bundle' "${dmgs[@]}")"
-            app_tar="$(assert_exactly_one 'macOS app tarball' "${app_tars[@]}")"
+            total_app_candidates=$(( ${#app_tars[@]} + ${#app_bundles[@]} ))
+            if [[ $total_app_candidates -ne 1 ]]; then
+              printf 'Expected exactly 1 macOS app candidate from tauri artifactPaths, found %s\n' "$total_app_candidates" >&2
+              printf 'App tar matches: %s\n' "${app_tars[*]:-<none>}" >&2
+              printf 'App bundle matches: %s\n' "${app_bundles[*]:-<none>}" >&2
+              exit 1
+            fi
+
+            target_app_tar="$upload_dir/yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_app.tar.gz"
+            if [[ ${#app_tars[@]} -eq 1 ]]; then
+              stage_asset "${app_tars[0]}" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_app.tar.gz"
+            else
+              app_bundle="${app_bundles[0]}"
+              app_bundle_parent="$(dirname "$app_bundle")"
+              app_bundle_name="$(basename "$app_bundle")"
+              tar -C "$app_bundle_parent" -czf "$target_app_tar" "$app_bundle_name"
+            fi
 
             stage_asset "$dmg" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}.dmg"
-            stage_asset "$app_tar" "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_app.tar.gz"
           fi
 
           staged_files=("$upload_dir"/*)
