@@ -25,8 +25,45 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
+  prepare-release:
+    name: Prepare release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Ensure draft release exists
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+
+            try {
+              await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+              core.info(`Release ${tag} already exists.`);
+            } catch (error) {
+              if (error.status !== 404) {
+                throw error;
+              }
+
+              core.info(`Release ${tag} does not exist. Creating draft release.`);
+              await github.rest.repos.createRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag_name: tag,
+                name: `Codex 用量查询 ${tag}`,
+                body: `Automated desktop release for ${tag}.`,
+                draft: true,
+                prerelease: false,
+              });
+            }
+
   release:
     name: Release ${{ matrix.name }}
+    needs: prepare-release
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -223,6 +260,24 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            src-tauri/target/release-upload/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  finalize-release:
+    name: Finalize release
+    needs: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Publish release metadata
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
           name: Codex 用量查询 ${{ env.RELEASE_TAG }}
           body: |
             Automated desktop release for ${{ env.RELEASE_TAG }}.
@@ -231,48 +286,26 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
-          overwrite_files: true
-          fail_on_unmatched_files: true
-          files: |
-            src-tauri/target/release-upload/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Remove legacy malformed assets for this platform
+      - name: Remove legacy malformed assets
         uses: actions/github-script@v8
-        env:
-          ASSET_PLATFORM: ${{ matrix.asset_platform }}
-          ASSET_ARCH: ${{ matrix.asset_arch }}
         with:
           script: |
             const tag = process.env.RELEASE_TAG;
             const version = tag.replace(/^v/, '');
-            const platform = process.env.ASSET_PLATFORM;
-            const arch = process.env.ASSET_ARCH;
-            const key = `${platform}_${arch}`;
 
-            const legacyAssetsByTarget = {
-              windows_x64: [`Codex._${version}_x64-setup.exe`],
-              linux_x64: [
-                `Codex._${version}_amd64.AppImage`,
-                `Codex._${version}_amd64.deb`,
-                `Codex.-${version}-1.x86_64.rpm`,
-              ],
-              macos_x64: [
-                `Codex._${version}_x64.dmg`,
-                'Codex._x64.app.tar.gz',
-              ],
-              macos_aarch64: [
-                `Codex._${version}_aarch64.dmg`,
-                'Codex._aarch64.app.tar.gz',
-              ],
-            };
-
-            const namesToDelete = legacyAssetsByTarget[key] ?? [];
-            if (!namesToDelete.length) {
-              core.info(`No legacy asset cleanup configured for ${key}.`);
-              return;
-            }
+            const namesToDelete = new Set([
+              `Codex._${version}_x64-setup.exe`,
+              `Codex._${version}_amd64.AppImage`,
+              `Codex._${version}_amd64.deb`,
+              `Codex.-${version}-1.x86_64.rpm`,
+              `Codex._${version}_x64.dmg`,
+              'Codex._x64.app.tar.gz',
+              `Codex._${version}_aarch64.dmg`,
+              'Codex._aarch64.app.tar.gz',
+            ]);
 
             let release;
             try {
@@ -290,7 +323,7 @@ jobs:
             }
 
             for (const asset of release.assets) {
-              if (!namesToDelete.includes(asset.name)) {
+              if (!namesToDelete.has(asset.name)) {
                 continue;
               }
 
