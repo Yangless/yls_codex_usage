@@ -25,45 +25,20 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
-  prepare-release:
-    name: Prepare release
+  verify-release-tag:
+    name: Verify release tag
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
     steps:
-      - name: Ensure draft release exists
-        uses: actions/github-script@v8
-        with:
-          script: |
-            const tag = process.env.RELEASE_TAG;
-
-            try {
-              await github.rest.repos.getReleaseByTag({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag,
-              });
-              core.info(`Release ${tag} already exists.`);
-            } catch (error) {
-              if (error.status !== 404) {
-                throw error;
-              }
-
-              core.info(`Release ${tag} does not exist. Creating draft release.`);
-              await github.rest.repos.createRelease({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                tag_name: tag,
-                name: `Codex 用量查询 ${tag}`,
-                body: `Automated desktop release for ${tag}.`,
-                draft: true,
-                prerelease: false,
-              });
-            }
+      - name: Verify release tag exists on origin
+        run: |
+          set -euo pipefail
+          git ls-remote --exit-code --tags origin "refs/tags/${RELEASE_TAG}"
 
   release:
     name: Release ${{ matrix.name }}
-    needs: prepare-release
+    needs: verify-release-tag
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -256,16 +231,13 @@ jobs:
 
           Copy-Item -LiteralPath $installers[0].FullName -Destination (Join-Path $uploadDir "yls_codex_usage_${version}_${{ matrix.asset_platform }}_${{ matrix.asset_arch }}_setup.exe")
 
-      - name: Upload renamed release assets
-        uses: softprops/action-gh-release@v2
+      - name: Upload renamed assets as workflow artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          overwrite_files: true
-          fail_on_unmatched_files: true
-          files: |
+          name: release-assets-${{ matrix.asset_platform }}-${{ matrix.asset_arch }}
+          if-no-files-found: error
+          path: |
             src-tauri/target/release-upload/*
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   finalize-release:
     name: Finalize release
@@ -274,6 +246,13 @@ jobs:
     timeout-minutes: 10
 
     steps:
+      - name: Download staged release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          pattern: release-assets-*
+          merge-multiple: true
+
       - name: Publish release metadata
         uses: softprops/action-gh-release@v2
         with:
@@ -286,6 +265,10 @@ jobs:
           draft: false
           prerelease: false
           generate_release_notes: true
+          overwrite_files: true
+          fail_on_unmatched_files: true
+          files: |
+            release-artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
