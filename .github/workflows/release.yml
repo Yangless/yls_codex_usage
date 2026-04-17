@@ -141,7 +141,7 @@ jobs:
 
       - name: Build Tauri bundles
         id: tauri_build
-        uses: tauri-apps/tauri-action@v0.6.2
+        uses: tauri-apps/tauri-action@v1
         with:
           args: ${{ matrix.tauri_args }}
           uploadWorkflowArtifacts: true
