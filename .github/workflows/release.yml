@@ -24,8 +24,49 @@ env:
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
+  cleanup-release-assets:
+    name: Prepare release assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Remove existing assets for this tag
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            try {
+              const { data: release } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              });
+
+              if (!release.assets.length) {
+                core.info(`Release ${tag} exists but has no assets to delete.`);
+                return;
+              }
+
+              for (const asset of release.assets) {
+                core.info(`Deleting existing asset: ${asset.name}`);
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id,
+                });
+              }
+            } catch (error) {
+              if (error.status === 404) {
+                core.info(`Release ${tag} does not exist yet. Nothing to clean up.`);
+                return;
+              }
+
+              throw error;
+            }
+
   release:
     name: Release ${{ matrix.name }}
+    needs: cleanup-release-assets
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -51,22 +92,22 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ env.RELEASE_TAG }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup pnpm with Corepack
+        run: |
+          corepack enable
+          corepack prepare pnpm@${{ env.PNPM_VERSION }} --activate
 
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
