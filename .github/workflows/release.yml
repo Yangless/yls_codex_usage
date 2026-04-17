@@ -22,6 +22,7 @@ env:
   NODE_VERSION: "24"
   PNPM_VERSION: "8.15.9"
   RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   release:
@@ -110,7 +111,9 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Tauri bundles
-        run: pnpm tauri build -- ${{ matrix.tauri_args }}
+        uses: tauri-apps/tauri-action@v0.6.2
+        with:
+          args: ${{ matrix.tauri_args }}
 
       - name: Stage renamed assets on Unix runners
         if: runner.os != 'Windows'
@@ -234,3 +237,67 @@ jobs:
             src-tauri/target/release-upload/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Remove legacy malformed assets for this platform
+        uses: actions/github-script@v8
+        env:
+          ASSET_PLATFORM: ${{ matrix.asset_platform }}
+          ASSET_ARCH: ${{ matrix.asset_arch }}
+        with:
+          script: |
+            const tag = process.env.RELEASE_TAG;
+            const version = tag.replace(/^v/, '');
+            const platform = process.env.ASSET_PLATFORM;
+            const arch = process.env.ASSET_ARCH;
+            const key = `${platform}_${arch}`;
+
+            const legacyAssetsByTarget = {
+              windows_x64: [`Codex._${version}_x64-setup.exe`],
+              linux_x64: [
+                `Codex._${version}_amd64.AppImage`,
+                `Codex._${version}_amd64.deb`,
+                `Codex.-${version}-1.x86_64.rpm`,
+              ],
+              macos_x64: [
+                `Codex._${version}_x64.dmg`,
+                'Codex._x64.app.tar.gz',
+              ],
+              macos_aarch64: [
+                `Codex._${version}_aarch64.dmg`,
+                'Codex._aarch64.app.tar.gz',
+              ],
+            };
+
+            const namesToDelete = legacyAssetsByTarget[key] ?? [];
+            if (!namesToDelete.length) {
+              core.info(`No legacy asset cleanup configured for ${key}.`);
+              return;
+            }
+
+            let release;
+            try {
+              ({ data: release } = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                tag,
+              }));
+            } catch (error) {
+              if (error.status === 404) {
+                core.info(`Release ${tag} does not exist. Nothing to clean up.`);
+                return;
+              }
+              throw error;
+            }
+
+            for (const asset of release.assets) {
+              if (!namesToDelete.includes(asset.name)) {
+                continue;
+              }
+
+              core.info(`Deleting legacy asset: ${asset.name}`);
+              await github.rest.repos.deleteReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                asset_id: asset.id,
+              });
+            }
