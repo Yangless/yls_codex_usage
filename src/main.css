@@ -1,0 +1,258 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+    font-family: "IBM Plex Sans", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    --background: 145 43% 97%;
+    --foreground: 156 38% 14%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    --popover: 150 33% 99%;
+    --popover-foreground: 222 47% 11%;
+    --primary: 153 100% 38%;
+    --primary-foreground: 150 100% 98%;
+    --secondary: 146 52% 92%;
+    --secondary-foreground: 152 59% 17%;
+    --muted: 150 43% 94%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 147 61% 90%;
+    --accent-foreground: 148 62% 20%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 214 27% 75%;
+    --input: 150 100% 99%;
+    --ring: 153 100% 38%;
+    --chart-1: 153 100% 38%;
+    --chart-2: 173 80% 40%;
+    --chart-3: 83 80% 45%;
+    --radius: 1.35rem;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --background: 157 60% 7%;
+      --foreground: 210 20% 98%;
+      --card: 157 55% 7%;
+      --card-foreground: 210 20% 98%;
+      --popover: 157 55% 8%;
+      --popover-foreground: 210 20% 98%;
+      --primary: 153 100% 38%;
+      --primary-foreground: 150 100% 98%;
+      --secondary: 158 48% 11%;
+      --secondary-foreground: 210 20% 98%;
+      --muted: 156 42% 11%;
+      --muted-foreground: 214 32% 84%;
+      --accent: 156 53% 15%;
+      --accent-foreground: 145 74% 84%;
+      --destructive: 0 84% 60%;
+      --destructive-foreground: 0 0% 100%;
+      --border: 214 23% 53%;
+      --input: 155 58% 8%;
+      --ring: 153 100% 38%;
+      --chart-1: 153 67% 53%;
+      --chart-2: 174 71% 50%;
+      --chart-3: 84 81% 55%;
+    }
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    margin: 0;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    background:
+      radial-gradient(circle at top, rgba(0, 193, 106, 0.16), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(20, 184, 166, 0.12), transparent 30%),
+      linear-gradient(180deg, #f3fbf7 0%, #edf8f2 100%);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    body {
+      background:
+        radial-gradient(circle at top, rgba(0, 193, 106, 0.16), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(45, 212, 191, 0.12), transparent 28%),
+        linear-gradient(180deg, #071b14 0%, #081f17 100%);
+    }
+  }
+
+  ::selection {
+    background: rgba(0, 193, 106, 0.24);
+  }
+
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    border: 0;
+  }
+}
+
+@layer utilities {
+  .container {
+    margin-inline: auto;
+    padding-inline: 1rem;
+  }
+
+  .surface-card-92 {
+    background-color: hsl(var(--card) / 0.92);
+  }
+
+  .surface-card-70 {
+    background-color: hsl(var(--card) / 0.7);
+  }
+
+  .surface-background-80 {
+    background-color: hsl(var(--background) / 0.8);
+  }
+
+  .surface-background-70 {
+    background-color: hsl(var(--background) / 0.7);
+  }
+
+  .surface-background-55 {
+    background-color: hsl(var(--background) / 0.55);
+  }
+
+  .surface-primary-8 {
+    background-color: hsl(var(--primary) / 0.08);
+  }
+
+  .surface-destructive-8 {
+    background-color: hsl(var(--destructive) / 0.08);
+  }
+
+  .border-primary-20 {
+    border-color: hsl(var(--primary) / 0.2);
+  }
+
+  .glow-primary {
+    background-color: hsl(var(--primary) / 0.18);
+  }
+
+  .glow-chart-2 {
+    background-color: hsl(var(--chart-2) / 0.14);
+  }
+
+  .glow-chart-3 {
+    background-color: hsl(var(--chart-3) / 0.12);
+  }
+
+  .gradient-progress-default {
+    background-image: linear-gradient(90deg, hsl(var(--chart-2)), hsl(var(--primary)));
+  }
+
+  .gradient-progress-weekly {
+    background-image: linear-gradient(90deg, hsl(var(--chart-1)), hsl(var(--chart-3)));
+  }
+
+  .glass-panel {
+    background-color: hsl(var(--card) / 0.74);
+    -webkit-backdrop-filter: blur(24px) saturate(160%);
+    backdrop-filter: blur(24px) saturate(160%);
+  }
+
+  .glass-surface {
+    background-color: hsl(var(--background) / 0.58);
+    -webkit-backdrop-filter: blur(18px) saturate(150%);
+    backdrop-filter: blur(18px) saturate(150%);
+  }
+
+  .glass-chip {
+    background-color: hsl(var(--background) / 0.68);
+    -webkit-backdrop-filter: blur(14px) saturate(145%);
+    backdrop-filter: blur(14px) saturate(145%);
+  }
+
+  .glass-popover {
+    background-color: hsl(var(--popover) / 0.88);
+    -webkit-backdrop-filter: blur(24px) saturate(165%);
+    backdrop-filter: blur(24px) saturate(165%);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    .dark-border-soft {
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+
+    .dark-surface-soft {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+
+    .dark-data-highlight-soft[data-highlighted] {
+      background-color: rgba(255, 255, 255, 0.12);
+    }
+
+    .glass-panel {
+      background-color: rgba(8, 27, 20, 0.72);
+    }
+
+    .glass-surface {
+      background-color: rgba(7, 27, 20, 0.54);
+    }
+
+    .glass-chip {
+      background-color: rgba(7, 27, 20, 0.64);
+    }
+
+    .glass-popover {
+      background-color: rgba(9, 31, 22, 0.84);
+    }
+  }
+
+  @media (min-width: 640px) {
+    .container {
+      max-width: 640px;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .container {
+      max-width: 768px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      max-width: 1024px;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .container {
+      max-width: 1280px;
+    }
+  }
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(107, 114, 128, 0.35);
+  border-radius: 999px;
+}
