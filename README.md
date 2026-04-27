@@ -1,6 +1,5 @@
 # yls_codex_usage
 
-[![CI](https://github.com/Yangless/yls_codex_usage/actions/workflows/ci.yml/badge.svg)](https://github.com/Yangless/yls_codex_usage/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/github/license/Yangless/yls_codex_usage)](./LICENSE)
 
 > 基于 `Tauri 2 + Vue 3 + Vite` 的桌面应用，用于查看 Codex 用量、订阅与余额，并在桌面端通过 `Tauri Stronghold` 安全保存 API key。

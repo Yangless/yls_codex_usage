@@ -52,9 +52,7 @@ Create the following labels in the GitHub repository UI.
 Apply these settings to `main`:
 
 - Require a pull request before merging
-- Require status checks to pass before merging
-- Select the `Validate on Windows` workflow as a required check
-- Select the `Release` workflow as a required check if you want release builds gated before merge
+- Do not require routine GitHub Actions status checks; this repository only keeps the tag/manual Release workflow enabled
 - Require branches to be up to date before merging
 - Require conversation resolution before merging
 - Restrict direct pushes if more than one maintainer is active
@@ -83,9 +81,9 @@ The repository now includes:
 - security policy
 - code of conduct
 - CODEOWNERS
-- CI workflows
+- tag/manual Release workflow
 
-Dependabot is intentionally not enabled, so dependency updates are handled manually rather than by scheduled GitHub runs.
+Dependabot and routine push/PR CI are intentionally not enabled, so dependency updates and pre-release validation are handled manually rather than by scheduled or per-PR GitHub runs.
 
 To keep them effective:
 
