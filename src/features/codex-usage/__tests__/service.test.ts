@@ -3,30 +3,42 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createCodexUsageService } from '../service'
 
 describe('codex usage service', () => {
-  const storage = {
-    loadSettings: vi.fn().mockResolvedValue({ pollInterval: 60_000 }),
-    saveSettings: vi.fn().mockResolvedValue(undefined),
-    clearSettings: vi.fn().mockResolvedValue(undefined),
-    loadSecret: vi.fn().mockResolvedValue('stored-key'),
-    saveSecret: vi.fn().mockResolvedValue(undefined),
-    clearSecret: vi.fn().mockResolvedValue(undefined)
-  }
-
-  const usageApi = {
-    getUsage: vi.fn().mockResolvedValue({
+  function createUsageResponse(email = 'demo@example.com') {
+    return {
       code: 200,
       state: {
         package: { packages: [] },
-        user: { uid: '1', email: 'demo@example.com' },
+        user: { uid: '1', email },
         userPackgeUsage: null,
         userPackgeUsage_week: null,
         userAccountInfo: { total_balance: 0, accountId: null }
       }
-    })
+    }
   }
 
+  function createStorageMock() {
+    return {
+      loadSettings: vi.fn().mockResolvedValue({ pollInterval: 60_000 }),
+      saveSettings: vi.fn().mockResolvedValue(undefined),
+      clearSettings: vi.fn().mockResolvedValue(undefined),
+      loadSecret: vi.fn().mockResolvedValue('stored-key'),
+      saveSecret: vi.fn().mockResolvedValue(undefined),
+      clearSecret: vi.fn().mockResolvedValue(undefined)
+    }
+  }
+
+  function createUsageApiMock() {
+    return {
+      getUsage: vi.fn().mockResolvedValue(createUsageResponse())
+    }
+  }
+
+  let storage: ReturnType<typeof createStorageMock>
+  let usageApi: ReturnType<typeof createUsageApiMock>
+
   beforeEach(() => {
-    vi.clearAllMocks()
+    storage = createStorageMock()
+    usageApi = createUsageApiMock()
   })
 
   it('hydrates stored settings and secret', async () => {
@@ -199,8 +211,9 @@ describe('codex usage service', () => {
     pollTick?.()
 
     expect(usageApi.getUsage).toHaveBeenCalledTimes(1)
+    expect(resolveUsage).toEqual(expect.any(Function))
 
-    resolveUsage?.()
+    resolveUsage()
     await Promise.resolve()
   })
 
@@ -231,16 +244,7 @@ describe('codex usage service', () => {
     const savePromise = service.saveProfile()
     await Promise.resolve()
 
-    resolveNewRefresh?.({
-      code: 200,
-      state: {
-        package: { packages: [] },
-        user: { uid: '1', email: 'new@example.com' },
-        userPackgeUsage: null,
-        userPackgeUsage_week: null,
-        userAccountInfo: { total_balance: 0, accountId: null }
-      }
-    })
+    resolveNewRefresh?.(createUsageResponse('new@example.com'))
     await savePromise
 
     resolveOldRefresh?.({
