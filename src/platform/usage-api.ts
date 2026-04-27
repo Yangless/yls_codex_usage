@@ -1,5 +1,7 @@
 import type { ApiState } from '@/features/codex-usage/types'
 
+export const CODEX_USAGE_API_URL = 'https://codex.ylsagi.com/codex/info'
+
 export type CodexUsageResponse = { code: number; msg?: string; state?: ApiState }
 
 export interface UsageApi {

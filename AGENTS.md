@@ -28,7 +28,7 @@ When resuming work in Codex, read these files first:
   - `pollInterval` is stored in Tauri Store `settings.json`
   - `API key` is stored in Tauri Stronghold `vault.hold`
 - Windows observed persistence directory: `%APPDATA%\com.ylsagi.codexusage\`
-- Usage requests go directly to `https://code.ylsagi.com/codex/info`
+- Usage requests go directly to `https://codex.ylsagi.com/codex/info` with `Authorization: Bearer <apiKey>`
 - Backend error bodies are surfaced through `msg` when present
 - Refresh requests are guarded so only the latest request may update `state.data`, `state.error`, and `state.loading`
 - New keys are applied in memory immediately and persisted to Stronghold in the background

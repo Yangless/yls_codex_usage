@@ -42,6 +42,7 @@ This repository contains the live Tauri 2 version of the Codex usage dashboard. 
   - skip Stronghold save when the key is unchanged
   - apply a new key immediately in memory and persist it in the background
   - ignore stale refresh responses so old-key errors do not overwrite newer success states
+- Usage requests go to `https://codex.ylsagi.com/codex/info` with `Authorization: Bearer <apiKey>`
 - Backend `401` responses now surface the backend `msg`, for example `无效的 API 密钥, 请检查配置参考: https://docs.ylsagi.io/codex/install`
 
 ## Verified In This Workspace

@@ -8,25 +8,15 @@ describe('web usage api adapter', () => {
     global.fetch = originalFetch
   })
 
-  it('normalizes all required auth headers', () => {
+  it('builds the server auth header', () => {
     expect(buildAuthHeaders('abc')).toEqual({
-      Accept: 'application/json',
-      Authorization: 'Bearer abc',
-      'x-api-key': 'abc',
-      'X-API-Key': 'abc',
-      apikey: 'abc',
-      key: 'abc'
+      Authorization: 'Bearer abc'
     })
   })
 
-  it('normalizes api key headers when token starts with Bearer', () => {
+  it('does not duplicate an existing Bearer prefix', () => {
     expect(buildAuthHeaders('Bearer token123')).toEqual({
-      Accept: 'application/json',
-      Authorization: 'Bearer token123',
-      'x-api-key': 'token123',
-      'X-API-Key': 'token123',
-      apikey: 'token123',
-      key: 'token123'
+      Authorization: 'Bearer token123'
     })
   })
 
@@ -42,7 +32,7 @@ describe('web usage api adapter', () => {
     })
 
     await expect(usageApi.getUsage('abc')).rejects.toThrow('无效的 API 密钥')
-    expect(fetchMock).toHaveBeenCalledWith('https://code.ylsagi.com/codex/info', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith('https://codex.ylsagi.com/codex/info', expect.objectContaining({
       method: 'GET',
       headers: buildAuthHeaders('abc')
     }))
@@ -70,7 +60,7 @@ describe('web usage api adapter', () => {
 
     const usageApi = createWebUsageApi()
     await expect(usageApi.getUsage('abc')).resolves.toEqual({ code: 0 })
-    expect(fetchMock).toHaveBeenCalledWith('https://code.ylsagi.com/codex/info', expect.objectContaining({
+    expect(fetchMock).toHaveBeenCalledWith('https://codex.ylsagi.com/codex/info', expect.objectContaining({
       method: 'GET',
       headers: buildAuthHeaders('abc')
     }))

@@ -10,7 +10,7 @@
     "os:default",
     {
       "identifier": "http:default",
-      "allow": [{ "url": "https://code.ylsagi.com/*" }]
+      "allow": [{ "url": "https://codex.ylsagi.com/*" }]
     }
   ]
 }

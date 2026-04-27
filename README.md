@@ -92,6 +92,7 @@ Tauri 桌面端已经不再使用 `localStorage` 保存密钥。
 
 - Stronghold 宿主初始化：`src-tauri/src/lib.rs`
 - Tauri 端存储实现：`src/platform/tauri/storage.tauri.ts`
+- 用量查询接口：`https://codex.ylsagi.com/codex/info`
 - 平台注入入口：`src/platform/index.ts`
 
 Windows 下默认本地文件位置：

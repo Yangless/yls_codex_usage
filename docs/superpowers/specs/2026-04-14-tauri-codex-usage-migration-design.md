@@ -4,7 +4,7 @@
 
 The repository is no longer in the pre-migration state. The active implementation is a `Tauri 2 + Vue 3 + Vite` application whose verified runtime in this workspace is `Windows desktop`.
 
-The app does one thing: persist a Codex API key locally, query `https://code.ylsagi.com/codex/info`, and render subscription and usage data with manual refresh plus interval polling.
+The app does one thing: persist a Codex API key locally, query `https://codex.ylsagi.com/codex/info`, and render subscription and usage data with manual refresh plus interval polling.
 
 ## Implemented Architecture
 
@@ -74,7 +74,7 @@ This means the Tauri desktop path no longer stores the API key in renderer `loca
 ### Refresh Usage
 
 1. Read the current in-memory key
-2. Send a request to `https://code.ylsagi.com/codex/info`
+2. Send a request to `https://codex.ylsagi.com/codex/info`
 3. If the backend returns a non-200 body with `msg`, surface that message
 4. Only the latest refresh request may write back `data`, `error`, and `loading`
 
