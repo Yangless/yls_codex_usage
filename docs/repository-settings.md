@@ -83,8 +83,9 @@ The repository now includes:
 - security policy
 - code of conduct
 - CODEOWNERS
-- Dependabot configuration
 - CI workflows
+
+Dependabot is intentionally not enabled, so dependency updates are handled manually rather than by scheduled GitHub runs.
 
 To keep them effective:
 
